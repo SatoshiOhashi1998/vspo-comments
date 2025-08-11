@@ -5,7 +5,7 @@ from modules import youtube_api, chat_processor
 from myutils.playsound import success
 import pandas as pd
 
-load_dotenv()  # .envの読み込み
+load_dotenv()
 
 
 def find_channels_by_name(partial_name: str, csv_path: str = "data/channel_data.csv") -> list:
@@ -18,6 +18,7 @@ def find_channels_by_name(partial_name: str, csv_path: str = "data/channel_data.
 
     Returns:
         list[dict]: 一致したチャンネルの情報（channel_name と channel_id の辞書）リスト。
+        test
     """
     try:
         df = pd.read_csv(csv_path)
@@ -80,23 +81,14 @@ def run_use_chat_data(channel_data):
 
 
 def main():
-    for target in get_all_channels():
-        channel_data = str(target['channel_name'])
+    for channel_data in get_all_channels():
         run_get_youtube_chat(channel_data)
         run_use_chat_data(channel_data)
 
 
 def sub():
     results = chat_processor.search_comments(comment='筋肉')
-    # results = chat_processor.search_comments(db=chat_processor.FILTERED_DB_FILE, comment='腹筋')
     chat_processor.save_to_csv(results)
-
-
-def _sub():
-    for target in ['めと', 'こかげ']:
-        channel_data = find_channels_by_name(target)
-        run_get_youtube_chat(channel_data[0])
-        run_use_chat_data(channel_data[0])
 
 
 def interactive_mode():
@@ -123,7 +115,6 @@ def interactive_mode():
 
 
 if __name__ == '__main__':
+    # main()
     interactive_mode()
     # sub()
-    # _sub()
-

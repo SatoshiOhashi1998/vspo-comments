@@ -11,6 +11,7 @@ import unicodedata
 import pandas as pd
 import ctypes
 from dotenv import load_dotenv
+import orjson
 
 load_dotenv()
 
@@ -68,14 +69,16 @@ def extract_comments_from_json(json_file, channel_name):
     df = getVideoData()
 
     try:
-        with open(json_file, "r", encoding="utf-8") as f:
+        with open(json_file, "rb") as f:
             for line in f:
                 try:
-                    data = json.loads(line)
+                    data = orjson.loads(line)
                     actions = data.get("replayChatItemAction", {}).get("actions", [])
+
                     for action in actions:
                         renderer = action.get("addChatItemAction", {}).get("item", {}).get("liveChatTextMessageRenderer", {})
                         message_data = renderer.get("message", {})
+
                         if 'emoji' in message_data:
                             continue
 
@@ -97,7 +100,7 @@ def extract_comments_from_json(json_file, channel_name):
                                 "url": filtered_df['URL'].values[0],
                                 "date": filtered_df['date'].values[0]
                             })
-                except json.JSONDecodeError as e:
+                except orjson.JSONDecodeError as e:
                     logging.error(f"JSONエラー: {e}")
     except Exception as e:
         logging.error(f"{json_file} の処理中にエラー: {e}")
