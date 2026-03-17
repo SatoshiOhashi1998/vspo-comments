@@ -1,5 +1,5 @@
 # main.py
-
+import os
 from dotenv import load_dotenv
 from modules import youtube_api, chat_processor
 from myutils.playsound import success
@@ -8,7 +8,11 @@ import pandas as pd
 load_dotenv()
 
 
-def find_channels_by_name(partial_name: str, csv_path: str = "data/channel_data.csv") -> list:
+COMMENT_KEYWORD = os.getenv('COMMENT_KEYWORD')
+CHANNEL_DATAS = os.getenv('CHANNEL_DATAS')
+
+
+def find_channels_by_name(partial_name: str, csv_path: str = CHANNEL_DATAS) -> list:
     """
     指定された部分文字列に一致する channel_name と channel_id をまとめて返す。
 
@@ -36,7 +40,7 @@ def find_channels_by_name(partial_name: str, csv_path: str = "data/channel_data.
         return []
 
 
-def get_all_channels(csv_path: str = "data/channel_data.csv") -> list:
+def get_all_channels(csv_path: str = CHANNEL_DATAS) -> list:
     """
     CSVからすべての channel_name と channel_id を取得して返す。
 
@@ -76,7 +80,7 @@ def run_use_chat_data(channel_data):
 
     chat_processor.migrate_filtered_data(channel_val=str(channel_data['channel_name']))
 
-    results = chat_processor.search_comments(db=chat_processor.FILTERED_DB_FILE, comment='腹筋')
+    results = chat_processor.search_comments(db=chat_processor.FILTERED_DB_FILE, comment=COMMENT_KEYWORD)
     chat_processor.save_to_csv(results)
 
 
@@ -87,8 +91,8 @@ def main():
 
 
 def sub():
-    results = chat_processor.search_comments(comment='筋肉')
-    chat_processor.save_to_csv(results)
+    results = chat_processor.search_comments(comment=os.getenv('SUB_KEYWORD'))
+    chat_processor.save_to_csv(data=results, filename=os.getenv('SUB_DATAS'))
 
 
 def interactive_mode():
@@ -115,6 +119,7 @@ def interactive_mode():
 
 
 if __name__ == '__main__':
-    # main()
-    interactive_mode()
-    # sub()
+    main()
+    # interactive_mode()
+    sub()
+    # success()

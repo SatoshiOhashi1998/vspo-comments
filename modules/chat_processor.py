@@ -30,6 +30,7 @@ DB_FILE = os.getenv('DB_FILE', 'data/comments.db')
 FILTERED_DB_FILE = os.getenv('FILTERED_DB_FILE', 'data/filtered_comments.db')
 FILTERED_DATA = os.getenv('FILTERED_DATA', 'data/comments.csv')
 GETED_DATA = os.getenv('GETED_DATA', 'data/youtube_videos.csv')
+COMMENT_KEYWORD = os.getenv('COMMENT_KEYWORD')
 
 
 def create_db(db=DB_FILE):
@@ -42,7 +43,7 @@ def create_db(db=DB_FILE):
             timestamp INTEGER NOT NULL,
             comment TEXT NOT NULL,
             title TEXT NOT NULL,
-            channel TEXT NOT NULL DEFAULT "一ノ瀬うるは",
+            channel TEXT NOT NULL,
             url TEXT,
             date TEXT,
             UNIQUE(timestamp, comment, title, channel, url, date)
@@ -182,7 +183,7 @@ def rename_json():
                 print(f"Renamed: {filename} -> {new_filename}")
 
 
-def search_comments(db=DB_FILE, channel=None, title=None, date=None, comment="腹筋"):
+def search_comments(db=DB_FILE, channel=None, title=None, date=None, comment=COMMENT_KEYWORD):
     query = "SELECT * FROM comments WHERE 1=1"
     params = []
     if channel:
@@ -256,7 +257,7 @@ def clean_data_files():
     df.to_csv(csv_path, index=False)
 
 
-def migrate_filtered_data(src_db=DB_FILE, dest_db=FILTERED_DB_FILE, comment_keyword="腹筋", channel_val="一ノ瀬うるは"):
+def migrate_filtered_data(src_db=DB_FILE, dest_db=FILTERED_DB_FILE, comment_keyword=COMMENT_KEYWORD, channel_val=os.getenv('DEFAULT_CHANNEL')):
     # 元DBからLIKE検索でデータ取得
     src_conn = sqlite3.connect(src_db)
     src_c = src_conn.cursor()

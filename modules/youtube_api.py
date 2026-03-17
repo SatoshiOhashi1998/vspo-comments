@@ -48,11 +48,20 @@ def get_videos_from_channel(channel_id, max_results=50):
     videos = []
 
     try:
+        # データを完全に取得する用
+        # results = api.fetch_and_save_videos_from_channel(
+        #     channel_id=channel_id,
+        #     published_after=PUBLISHED_AFTER_DATE,
+        #     published_before=PUBLISHED_BEFORE_DATE
+        # )
+
+        # APIのリソース確保のため基本はこちらを使う
         results = api.get_channel_videos_with_cache(
             channel_id=channel_id,
             start_date=PUBLISHED_AFTER_DATE,
             end_date=PUBLISHED_BEFORE_DATE
         )
+
 
         for row in results:
             video_id = row[0]  # videos.video_id
