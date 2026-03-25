@@ -300,26 +300,30 @@ def clean_data_files():
     df.to_csv(csv_path, index=False)
 
 
-def migrate_filtered_data(src_db=DB_FILE, dest_db=FILTERED_DB_FILE, comment_keyword=COMMENT_KEYWORD, channel_val=os.getenv('DEFAULT_CHANNEL')):
-    # 元DBからLIKE検索でデータ取得
-    src_conn = sqlite3.connect(src_db)
-    src_c = src_conn.cursor()
-    src_c.execute('''
-        SELECT timestamp, comment, title, channel, url, date
-        FROM comments
-        WHERE comment LIKE ? AND channel = ?
-    ''', (f'%{comment_keyword}%', channel_val))
-    rows = src_c.fetchall()
-    src_conn.close()
+def migrate_filtered_data(src_db=DB_FILE, dest_db=FILTERED_DB_FILE, comment_keyword=COMMENT_KEYWORD, channel_val=None):
+    # 1. 元DBからデータ取得 (新しいカラム構成に合わせてSELECT)
+    with sqlite3.connect(src_db) as src_conn:
+        src_c = src_conn.cursor()
+        # ★ video_id と author_name を含める
+        src_c.execute('''
+            SELECT video_id, timestamp, comment, author_name, title, channel, url, date
+            FROM comments
+            WHERE comment LIKE ? AND channel = ?
+        ''', (f'%{comment_keyword}%', channel_val))
+        rows = src_c.fetchall()
 
-    # 新DB作成してデータをコピー
+    # 2. フィルタ用DBを新構造で作成 (古い dest_db があれば削除してからが確実です)
+    if os.path.exists(dest_db):
+        os.remove(dest_db)
     create_db(dest_db)
-    dest_conn = sqlite3.connect(dest_db)
-    dest_c = dest_conn.cursor()
-    dest_c.executemany('''
-        INSERT OR IGNORE INTO comments (
-            timestamp, comment, title, channel, url, date
-        ) VALUES (?, ?, ?, ?, ?, ?)
-    ''', rows)
-    dest_conn.commit()
-    dest_conn.close()
+
+    # 3. 新DBへ流し込み
+    with sqlite3.connect(dest_db) as dest_conn:
+        dest_c = dest_conn.cursor()
+        # ★ 8つのカラムに対応
+        dest_c.executemany('''
+            INSERT OR IGNORE INTO comments (
+                video_id, timestamp, comment, author_name, title, channel, url, date
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ''', rows)
+        dest_conn.commit()
