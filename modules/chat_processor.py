@@ -34,27 +34,36 @@ COMMENT_KEYWORD = os.getenv('COMMENT_KEYWORD')
 
 
 def create_db(db=DB_FILE):
-    conn = sqlite3.connect(db)
-    c = conn.cursor()
+    """
+    コメント保存用DBの初期化。
+    video_id を追加し、重複判定の精度を向上させます。
+    """
+    with sqlite3.connect(db) as conn:
+        c = conn.cursor()
 
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS comments (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            timestamp INTEGER NOT NULL,
-            comment TEXT NOT NULL,
-            title TEXT NOT NULL,
-            channel TEXT NOT NULL,
-            url TEXT,
-            date TEXT,
-            UNIQUE(timestamp, comment, title, channel, url, date)
-        )
-    ''')
+        # テーブル作成
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS comments (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                video_id TEXT NOT NULL,         -- YouTubeの動画ID (11桁)
+                timestamp INTEGER NOT NULL,     -- 配信開始からの経過秒
+                comment TEXT NOT NULL,          -- コメント本文
+                author_name TEXT,               -- ★投稿者名（重複回避の精度向上のため）
+                title TEXT,                     -- 動画タイトル（表示用）
+                channel TEXT,                   -- チャンネル名
+                url TEXT,                       -- 動画URL
+                date TEXT,                      -- 投稿日
+                -- 同時多発コメントを許容しつつ、同じ実行での二重登録を防ぐ
+                -- ※author_nameを含めることで、同じ秒数の別人の「草」を保存可能に
+                UNIQUE(video_id, timestamp, author_name, comment)
+            )
+        ''')
 
-    # title列にインデックスを追加
-    c.execute('CREATE INDEX IF NOT EXISTS idx_comments_title ON comments(title)')
-
-    conn.commit()
-    conn.close()
+        # 検索を高速化するためのインデックス
+        c.execute('CREATE INDEX IF NOT EXISTS idx_comments_video_id ON comments(video_id)')
+        c.execute('CREATE INDEX IF NOT EXISTS idx_comments_comment ON comments(comment)')
+        
+        conn.commit()
 
 
 def getVideoData():
@@ -124,25 +133,29 @@ def parse_timestamp(timestamp_text: str) -> int:
         return 0
 
 
-def save_comments_to_db(comments):
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
+def save_comments_to_db(comments, db=DB_FILE):
+    """
+    抽出したコメントリストをDBに一括保存します。
+    """
+    if not comments:
+        return
 
-    for comment in comments:
+    with sqlite3.connect(db) as conn:
+        c = conn.cursor()
         try:
-            c.execute('''
-                INSERT OR IGNORE INTO comments (timestamp, comment, title, channel, url, date)
-                VALUES (?, ?, ?, ?, ?, ?)
-            ''', (
-                comment["timestamp"], comment["comment"],
-                comment["title"], comment["channel"],
-                comment["url"], comment["date"]
-            ))
+            c.executemany('''
+                INSERT OR IGNORE INTO comments (
+                    video_id, timestamp, comment, author_name, title, channel, url, date
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ''', [
+                (
+                    c["video_id"], c["timestamp"], c["comment"], c.get("author_name"),
+                    c["title"], c["channel"], c["url"], c["date"]
+                ) for c in comments
+            ])
+            conn.commit()
         except sqlite3.Error as e:
-            logging.error(f"保存失敗: {e}")
-
-    conn.commit()
-    conn.close()
+            logging.error(f"DB保存エラー: {e}")
 
 
 def process_json_files(directory, channel_name):
