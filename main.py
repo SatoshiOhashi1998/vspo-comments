@@ -119,7 +119,7 @@ def interactive_mode():
 
 
 if __name__ == '__main__':
-    main()
-    # interactive_mode()
-    sub()
+    # main()
+    interactive_mode()
+    # sub()
     # success()
