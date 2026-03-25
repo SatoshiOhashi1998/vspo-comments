@@ -75,8 +75,28 @@ def getVideoData():
 
 
 def extract_comments_from_json(json_file, channel_name):
+    """
+    JSONファイルからコメント、投稿者名、タイムスタンプ、IDを抽出します。
+    """
     comments = []
-    df = getVideoData()
+    
+    # 1. ファイル名から video_id を抽出 (例: abc12345678.json)
+    # youtube_api.py の保存形式変更に合わせます
+    video_id = os.path.splitext(os.path.basename(json_file))[0].split('.')[0]
+    
+    # 2. YouTubeDB (キャッシュ) から動画の詳細情報を取得
+    from myutils.youtube_api.fetch_youtube_data import YouTubeAPI
+    yt_api = YouTubeAPI()
+    video_data = yt_api.db.get_video_by_id(video_id) # YouTubeDB側にこのメソッドを追加推奨
+    
+    if not video_data:
+        logging.error(f"Video ID {video_id} の情報がキャッシュDBに見つかりません。")
+        return []
+
+    # video_data の構造に合わせて取得 (タイトル, URL, 日付など)
+    title = video_data[1]
+    url = f"https://www.youtube.com/watch?v={video_id}"
+    date = video_data[3]
 
     try:
         with open(json_file, "rb") as f:
@@ -86,32 +106,34 @@ def extract_comments_from_json(json_file, channel_name):
                     actions = data.get("replayChatItemAction", {}).get("actions", [])
 
                     for action in actions:
-                        renderer = action.get("addChatItemAction", {}).get("item", {}).get("liveChatTextMessageRenderer", {})
+                        # チャットデータの階層を深く掘る
+                        item = action.get("addChatItemAction", {}).get("item", {})
+                        renderer = item.get("liveChatTextMessageRenderer", {})
+                        
+                        if not renderer: continue
+                        
+                        # 絵文字のみのメッセージをスキップ（既存仕様）
                         message_data = renderer.get("message", {})
+                        if 'emoji' in message_data: continue
 
-                        if 'emoji' in message_data:
-                            continue
-
+                        # 各項目の抽出
                         comment_text = "".join(run.get("text", "") for run in message_data.get("runs", []))
+                        author_name = renderer.get("authorName", {}).get("simpleText", "Unknown") # ★投稿者名を取得
                         timestamp_text = renderer.get("timestampText", {}).get("simpleText", "")
                         timestamp = parse_timestamp(timestamp_text)
 
-                        insert_title = os.path.splitext(os.path.basename(json_file))[0].strip().replace('⧸', '/')
-                        insert_title = unicodedata.normalize('NFKC', insert_title)
-                        df['Title'] = df['Title'].apply(lambda x: unicodedata.normalize('NFKC', x))
-                        filtered_df = df[df['Title'] == insert_title]
-
-                        if not filtered_df.empty:
-                            comments.append({
-                                "timestamp": timestamp,
-                                "comment": comment_text,
-                                "title": insert_title,
-                                "channel": channel_name,
-                                "url": filtered_df['URL'].values[0],
-                                "date": filtered_df['date'].values[0]
-                            })
-                except orjson.JSONDecodeError as e:
-                    logging.error(f"JSONエラー: {e}")
+                        comments.append({
+                            "video_id": video_id,
+                            "timestamp": timestamp,
+                            "comment": comment_text,
+                            "author_name": author_name, # ★新カラムに対応
+                            "title": title,
+                            "channel": channel_name,
+                            "url": url,
+                            "date": date
+                        })
+                except orjson.JSONDecodeError:
+                    continue
     except Exception as e:
         logging.error(f"{json_file} の処理中にエラー: {e}")
 
