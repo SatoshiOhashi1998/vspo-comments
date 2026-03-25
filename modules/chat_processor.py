@@ -181,29 +181,37 @@ def save_comments_to_db(comments, db=DB_FILE):
 
 
 def process_json_files(directory, channel_name):
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
+    """
+    ディレクトリ内のJSONファイルをスキャンし、IDベースで処理を行います。
+    """
+    # 1. 既に処理済みの video_id をセットで取得（二重処理防止・高速化）
+    with sqlite3.connect(DB_FILE) as conn:
+        processed_ids = {row[0] for row in conn.execute("SELECT DISTINCT video_id FROM comments")}
 
+    # 2. ディレクトリ内のファイルをループ
     for filename in os.listdir(directory):
-        if filename.endswith(".json"):
-            json_file = os.path.join(directory, filename)
+        if not filename.endswith(".json"):
+            continue
 
-            # ファイル名からタイトル抽出（正規化）
-            title = os.path.splitext(filename)[0].strip().replace('⧸', '/')
-            title = unicodedata.normalize('NFKC', title)
+        # ファイル名から video_id を抽出 (例: "abc12345678.json" -> "abc12345678")
+        video_id = filename.replace(".json", "")
 
-            # 既にこのタイトルのコメントが登録されているか？
-            c.execute("SELECT 1 FROM comments WHERE title = ? LIMIT 1", (title,))
-            if c.fetchone():
-                print(f"⏭ スキップ: {filename}（既に登録済み）")
-                continue
+        # 既にDBにこの動画のコメントがある場合はスキップ
+        if video_id in processed_ids:
+            print(f"⏭ スキップ: {video_id}（登録済み）")
+            continue
 
-            print(f"▶ {filename} を処理中...")
-            comments = extract_comments_from_json(json_file, channel_name)
-            if comments:
-                save_comments_to_db(comments)
+        json_path = os.path.join(directory, filename)
+        print(f"▶ {video_id} を解析中...")
 
-    conn.close()
+        # 3. コメント抽出 (内部で YouTubeDB からタイトル等を取得)
+        comments = extract_comments_from_json(json_path, channel_name)
+        
+        if comments:
+            save_comments_to_db(comments)
+            print(f"✅ {len(comments)} 件のコメントを保存しました。")
+        else:
+            print(f"⚠️ {video_id}: コメントが見つからないか、動画情報がDBにありません。")
 
 
 def rename_json():
