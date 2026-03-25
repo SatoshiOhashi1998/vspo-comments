@@ -1,5 +1,4 @@
 # modules/chat_processor.py
-# test
 
 import os
 import glob
