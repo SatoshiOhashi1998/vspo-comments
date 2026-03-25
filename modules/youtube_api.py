@@ -30,7 +30,7 @@ ydl_opts = {
     "skip_download": True,
     "writesubtitles": True,
     "subtitleslangs": ["live_chat"],
-    "outtmpl": f"{OUTPUT_DIR}/%(title)s [%(id)s].%(ext)s",
+    "outtmpl": f"{OUTPUT_DIR}/%(id)s.json",  # IDをファイル名にする
     "cookiefile": "cookies.txt",
 }
 
