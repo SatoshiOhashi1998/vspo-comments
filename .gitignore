@@ -211,3 +211,5 @@ data/*.sqlite3
 data/**/*.db
 data/**/*.sqlite
 data/**/*.sqlite3
+
+data/live_chat/
