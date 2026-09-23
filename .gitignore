@@ -213,3 +213,6 @@ data/**/*.sqlite
 data/**/*.sqlite3
 
 data/live_chat/
+data/channel_data.csv
+data/comments.csv
+st4-youtube-live-chat-collector.sublime-workspace
