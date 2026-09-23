@@ -66,7 +66,7 @@ def interactive_mode() -> None:
     print(f"キーワード: {', '.join(COMMENT_KEYWORDS)}")
 
     stats = process_channel(
-        channel_id=channel["channel_id"],
+        channel_id=channel.channel_id,
         start_date=start_date,
         end_date=end_date,
         keywords=COMMENT_KEYWORDS,
@@ -77,7 +77,7 @@ def interactive_mode() -> None:
 
     export_comments_to_csv(
         FILTERED_DATA,
-        channel=channel["channel_name"],
+        channel=channel.channel_name,
     )
 
 

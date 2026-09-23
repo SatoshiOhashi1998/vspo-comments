@@ -4,6 +4,8 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
+from .channel import Channel
+
 load_dotenv()
 
 
@@ -39,18 +41,25 @@ def validate() -> None:
         )
 
 
-def get_channels(csv_path: str = CHANNEL_DATAS) -> list[dict[str, str]]:
+def get_channels(csv_path: str = CHANNEL_DATAS) -> list[Channel]:
     with open(csv_path, "r", encoding="utf-8-sig", newline="") as file:
-        return list(csv.DictReader(file))
+        return [
+            Channel(
+                channel_name=row["channel_name"],
+                channel_id=row["channel_id"],
+            )
+            for row in csv.DictReader(file)
+        ]
 
 
 def find_channels_by_name(
     partial_name: str,
     csv_path: str = CHANNEL_DATAS,
-) -> list[dict[str, str]]:
+) -> list[Channel]:
     channels = get_channels(csv_path)
+
     return [
         channel
         for channel in channels
-        if partial_name.lower() in channel.get("channel_name", "").lower()
+        if partial_name.lower() in channel.channel_name.lower()
     ]

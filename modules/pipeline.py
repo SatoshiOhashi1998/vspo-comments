@@ -4,6 +4,7 @@ from .comment_processor import extract_comments
 from .comments_db import CommentsDB
 from .config import COMMENT_KEYWORDS, COOKIES_FILE, JSON_DIRECTORY
 from .live_chat import NO_CHAT, RETRY, SUCCESS, delete_video_json, download_live_chat
+from .channel import Channel
 from .youtube import get_target_videos
 
 
@@ -98,7 +99,7 @@ def process_channel(
 
 
 def process_channels(
-    channels: list[dict[str, str]],
+    channels: list[Channel],
     start_date,
     end_date,
     keywords: list[str] | None = None,
@@ -116,11 +117,11 @@ def process_channels(
     for channel in channels:
         print()
         print("=" * 60)
-        print(f"CHANNEL: {channel['channel_name']} ({channel['channel_id']})")
+        print(f"CHANNEL: {channel.channel_name} ({channel.channel_id})")
         print("=" * 60)
 
         stats = process_channel(
-            channel_id=channel["channel_id"],
+            channel_id=channel.channel_id,
             start_date=start_date,
             end_date=end_date,
             keywords=keywords,
