@@ -10,6 +10,7 @@ YouTubeの動画情報取得には、共通ライブラリ `myutils.youtube_api`
 youtube-live-chat-collector/
 ├── main.py
 ├── modules/
+│   ├── __init__.py
 │   ├── channel.py
 │   ├── comment_processor.py
 │   ├── comments_db.py
@@ -19,6 +20,14 @@ youtube-live-chat-collector/
 │   ├── pipeline.py
 │   └── youtube.py
 ├── tests/
+│   ├── test_channel.py
+│   ├── test_comment_processor.py
+│   ├── test_comments_db.py
+│   ├── test_config.py
+│   ├── test_exporter.py
+│   ├── test_live_chat.py
+│   ├── test_pipeline.py
+│   └── test_youtube.py
 ├── requirements.txt
 ├── requirements-freeze.txt
 └── README.md
@@ -33,7 +42,7 @@ youtube-live-chat-collector/
 * `live_chat.py`: yt-dlpによるLive Chat JSONの取得とエラー分類
 * `comment_processor.py`: Live Chat JSONの解析とキーワード抽出
 * `pipeline.py`: 動画単位・チャンネル単位の処理フロー
-* `exporter.py`: コメントのCSV出力
+* `exporter.py`: 抽出したコメントのCSV出力
 * `main.py`: 実行入口
 
 ## 依存関係
@@ -48,7 +57,7 @@ youtube-live-chat-collector
   myutils.youtube_api
 ```
 
-`myutils` はYouTube Data APIへのアクセスやYouTube動画情報のキャッシュを担当する。
+`myutils.youtube_api` はYouTube Data APIへのアクセスと、YouTube動画情報のSQLiteキャッシュを担当する。
 
 開発時は `requirements.txt` からローカルの `myutils` をeditable installする。
 
@@ -64,44 +73,58 @@ youtube-live-chat-collector
 pip install -r requirements.txt
 ```
 
-依存関係を含めた開発環境全体を固定する場合は、`requirements-freeze.txt` を使用する。
+## 環境変数
 
-テストはpytestで実行する。
+### チャンネル
 
-```bash
-pytest
-```
+`CHANNEL_DATAS` でチャンネル情報を記録したCSVファイルを指定する。
 
-## チャンネル設定
-
-チャンネル情報はCSVで管理する。
+デフォルト:
 
 ```text
-channel_name,channel_id
+data/channels.csv
 ```
 
-`CHANNEL_DATAS` でCSVファイルの場所を指定できる。
+CSVは以下の形式にする。
 
-## COMMENT_KEYWORD
+```csv
+channel_name,channel_id
+チャンネルA,UCxxxxxxxxxxxxxxxxxxxxxx
+チャンネルB,UCyyyyyyyyyyyyyyyyyyyyyy
+```
 
-抽出対象とするキーワードをカンマ区切りで複数指定できる。
+### コメント
+
+`COMMENT_KEYWORD` で抽出対象とするキーワードを指定する。
+
+カンマ区切りで複数指定できる。
 
 ```env
 COMMENT_KEYWORD=かわいい,草,面白い
 ```
 
-空白のキーワードは無視する。
+キーワードの前後の空白は削除され、空白だけのキーワードは無視される。
 
 `COMMENT_KEYWORD` が空の場合、設定エラーとして扱う。
 
-## 日付
+`FILTERED_DATA` で抽出コメントのCSV出力先を指定する。
 
-`PUBLISHED_AFTER_DATE` と `PUBLISHED_BEFORE_DATE` で対象期間を指定できる。
+デフォルト:
+
+```text
+data/comments.csv
+```
+
+### 動画取得期間
+
+`PUBLISHED_AFTER_DATE` と `PUBLISHED_BEFORE_DATE` で対象期間の初期値を指定できる。
 
 ```env
 PUBLISHED_AFTER_DATE=2026-09-01
 PUBLISHED_BEFORE_DATE=2026-09-30
 ```
+
+実行時に別の日付を入力することもできる。
 
 `2026-09-01` のような日付だけを指定した場合、UTCの00:00を境界として扱う。
 
@@ -111,6 +134,46 @@ PUBLISHED_BEFORE_DATE=2026-09-30
 PUBLISHED_AFTER_DATE=2026-09-01T00:00:00Z
 PUBLISHED_BEFORE_DATE=2026-09-30T00:00:00Z
 ```
+
+### Live Chat
+
+`JSON_DIRECTORY` でLive Chat JSONの保存先を指定する。
+
+デフォルト:
+
+```text
+data/live_chat
+```
+
+`COOKIES_FILE` でyt-dlpが使用するCookieファイルを指定する。
+
+デフォルト:
+
+```text
+cookies.txt
+```
+
+### コメントDB
+
+`COMMENTS_DB_PATH` でコメントDBの保存先を指定する。
+
+デフォルト:
+
+```text
+data/comments.db
+```
+
+YouTube動画情報のDBについては、`myutils.youtube_api` 側で管理する。
+
+## 実行
+
+```bash
+python main.py
+```
+
+実行するとチャンネル名を部分一致で検索し、対象チャンネルと取得期間を指定して処理する。
+
+複数のチャンネルが一致した場合は、対象チャンネルを番号で選択する。
 
 ## 処理状態
 
@@ -149,18 +212,40 @@ excluded=0
 
 * YouTube動画情報: `youtube.db`
 * Live Chat処理状態・抽出コメント: `comments.db`
-* Live Chat取得用JSON: `JSON_DIRECTORY`
-* 抽出コメントCSV: `FILTERED_DATA`
+* Live Chat取得用JSON: `data/live_chat/`
+* 抽出コメントCSV: `data/comments.csv`
 
-デフォルトの保存先は設定ファイルで定義されている。
+保存先は環境変数で変更できる。
+
+## テスト
+
+pytestを使用する。
+
+```bash
+pytest
+```
+
+テストではYouTube Data APIやyt-dlpへの実際の通信は行わず、モックを使用して各モジュールをテストする。
+
+SQLiteを使用するテストでは、一時ディレクトリを利用してテスト用DBを作成する。
 
 ## requirements.txt と requirements-freeze.txt
 
 `requirements.txt` には、このプロジェクトが直接依存するパッケージを記載する。
 
+現在の直接依存は以下のとおり。
+
+```text
+pandas
+pygame
+python-dotenv
+yt-dlp
+myutils
+```
+
 `requirements-freeze.txt` には、間接依存を含む実際のPython環境のパッケージとバージョンを記録する。
 
-`requirements-freeze.txt` は以下で更新できる。
+環境を更新した場合は、以下のコマンドでfreezeファイルを更新できる。
 
 ```bash
 pip freeze > requirements-freeze.txt
