@@ -40,8 +40,8 @@ def interactive_mode() -> None:
         print("複数のチャンネルが見つかりました:")
         for index, channel in enumerate(matches, start=1):
             print(
-                f"{index}: {channel['channel_name']} "
-                f"({channel['channel_id']})"
+                f"{index}: {channel.channel_name} "
+                f"({channel.channel_id})"
             )
 
         while True:
