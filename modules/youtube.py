@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+import os
 import re
 from datetime import date, datetime, time, timedelta, timezone
 
-from myutils.youtube_api import YouTubeAPI
+from myutils.youtube_api import YouTubeAPI, create_youtube_api
 
 
 UTC = timezone.utc
@@ -84,7 +85,7 @@ def get_target_videos(
     live_streaming_detailsの有無で通常動画を判定し、
     is_live=True/Falseを付加する。
     """
-    api = api or YouTubeAPI()
+    api = api or create_youtube_api()
 
     start = _to_utc_z(start_date)
     end = _to_utc_z(end_date, end_date=True)
